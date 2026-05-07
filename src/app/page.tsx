@@ -55,13 +55,27 @@ async function decryptMessage(data: string, key: CryptoKey): Promise<string> {
   return new TextDecoder().decode(decrypted);
 }
 
-// ICE servers for better NAT traversal
-const ICE_SERVERS = [
+const ICE_SERVERS: RTCIceServer[] = [
   { urls: "stun:stun.l.google.com:19302" },
   { urls: "stun:stun1.l.google.com:19302" },
   { urls: "stun:stun2.l.google.com:19302" },
   { urls: "stun:stun3.l.google.com:19302" },
   { urls: "stun:stun4.l.google.com:19302" },
+  {
+    urls: "turn:openrelay.metered.ca:80",
+    username: "openrelayproject",
+    credential: "openrelayproject",
+  },
+  {
+    urls: "turn:openrelay.metered.ca:443",
+    username: "openrelayproject",
+    credential: "openrelayproject",
+  },
+  {
+    urls: "turn:openrelay.metered.ca:443?transport=tcp",
+    username: "openrelayproject",
+    credential: "openrelayproject",
+  },
 ];
 
 export default function Home() {
@@ -79,19 +93,36 @@ export default function Home() {
   const [callDuration, setCallDuration] = useState(0);
   const [encrypted, setEncrypted] = useState(false);
   const [chatOpen, setChatOpen] = useState(true);
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
 
   const peerRef = useRef<Peer | null>(null);
   const callRef = useRef<MediaConnection | null>(null);
   const dataRef = useRef<DataConnection | null>(null);
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
-  const localStreamRef = useRef<MediaStream | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const encKeyRef = useRef<CryptoKey | null>(null);
   const isCreatorRef = useRef(false);
   const nameRef = useRef(name);
   nameRef.current = name;
+
+  // Attach local stream to video element whenever either changes
+  useEffect(() => {
+    if (localVideoRef.current && localStream) {
+      localVideoRef.current.srcObject = localStream;
+      localVideoRef.current.play().catch(() => {});
+    }
+  }, [localStream, state]);
+
+  // Attach remote stream to video element whenever either changes
+  useEffect(() => {
+    if (remoteVideoRef.current && remoteStream) {
+      remoteVideoRef.current.srcObject = remoteStream;
+      remoteVideoRef.current.play().catch(() => {});
+    }
+  }, [remoteStream, state]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -119,13 +150,14 @@ export default function Home() {
   const cleanup = useCallback(() => {
     callRef.current?.close();
     dataRef.current?.close();
-    localStreamRef.current?.getTracks().forEach((t) => t.stop());
+    localStream?.getTracks().forEach((t) => t.stop());
     peerRef.current?.destroy();
     callRef.current = null;
     dataRef.current = null;
-    localStreamRef.current = null;
     peerRef.current = null;
     encKeyRef.current = null;
+    setLocalStream(null);
+    setRemoteStream(null);
     setMessages([]);
     setRemoteName("");
     setRoomId("");
@@ -134,7 +166,7 @@ export default function Home() {
     setCallDuration(0);
     setEncrypted(false);
     setState("lobby");
-  }, []);
+  }, [localStream]);
 
   const setupDataConnection = useCallback(
     (conn: DataConnection) => {
@@ -174,7 +206,7 @@ export default function Home() {
         }
       });
 
-      conn.on("close", cleanup);
+      conn.on("close", () => cleanup());
       conn.on("error", () => cleanup());
     },
     [cleanup]
@@ -186,10 +218,7 @@ export default function Home() {
         video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "user" },
         audio: { echoCancellation: true, noiseSuppression: true },
       });
-      localStreamRef.current = stream;
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = stream;
-      }
+      setLocalStream(stream);
       return stream;
     } catch {
       setError("Camera/mic access denied. Please allow permissions and try again.");
@@ -221,14 +250,11 @@ export default function Home() {
     peer.on("call", (call) => {
       call.answer(stream);
       callRef.current = call;
-      call.on("stream", (remoteStream) => {
-        if (remoteVideoRef.current) {
-          remoteVideoRef.current.srcObject = remoteStream;
-          remoteVideoRef.current.play().catch(() => {});
-        }
+      call.on("stream", (rs) => {
+        setRemoteStream(rs);
         setState("in-call");
       });
-      call.on("close", cleanup);
+      call.on("close", () => cleanup());
       call.on("error", () => cleanup());
     });
 
@@ -271,14 +297,11 @@ export default function Home() {
       }
       callRef.current = call;
 
-      call.on("stream", (remoteStream) => {
-        if (remoteVideoRef.current) {
-          remoteVideoRef.current.srcObject = remoteStream;
-          remoteVideoRef.current.play().catch(() => {});
-        }
+      call.on("stream", (rs) => {
+        setRemoteStream(rs);
         setState("in-call");
       });
-      call.on("close", cleanup);
+      call.on("close", () => cleanup());
       call.on("error", () => cleanup());
 
       const conn = peer.connect(fullId, { reliable: true });
@@ -312,7 +335,7 @@ export default function Home() {
   };
 
   const toggleMic = () => {
-    const track = localStreamRef.current?.getAudioTracks()[0];
+    const track = localStream?.getAudioTracks()[0];
     if (track) {
       track.enabled = !track.enabled;
       setMicOn(track.enabled);
@@ -320,7 +343,7 @@ export default function Home() {
   };
 
   const toggleCam = () => {
-    const track = localStreamRef.current?.getVideoTracks()[0];
+    const track = localStream?.getVideoTracks()[0];
     if (track) {
       track.enabled = !track.enabled;
       setCamOn(track.enabled);
@@ -340,7 +363,7 @@ export default function Home() {
   if (state === "lobby" || state === "connecting") {
     return (
       <div className="flex flex-1 items-center justify-center p-4 relative overflow-hidden min-h-screen">
-        {/* Background decorations */}
+        {/* Background blobs */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute -top-20 -left-20 w-72 h-72 rounded-full bg-accent-light/40 blur-3xl animate-float" />
           <div className="absolute -bottom-20 -right-20 w-80 h-80 rounded-full bg-blue-light/50 blur-3xl animate-float" style={{ animationDelay: "2s" }} />
@@ -348,7 +371,7 @@ export default function Home() {
         </div>
 
         <div className="w-full max-w-md space-y-6 relative z-10 animate-slide-up">
-          {/* Logo card */}
+          {/* Logo */}
           <div className="glass-strong rounded-3xl p-8 text-center" style={{ boxShadow: "var(--shadow-lg)" }}>
             <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl mb-4"
               style={{ background: "linear-gradient(135deg, var(--accent-light), var(--lily-light), var(--blue-light))" }}>
@@ -376,9 +399,8 @@ export default function Home() {
             </div>
           )}
 
-          {/* Main form card */}
+          {/* Form */}
           <div className="glass rounded-3xl p-6 space-y-5" style={{ boxShadow: "var(--shadow)" }}>
-            {/* Name input */}
             <div>
               <label className="block text-xs text-muted mb-2 font-medium uppercase tracking-wider">Your Name</label>
               <input
@@ -428,7 +450,6 @@ export default function Home() {
               </>
             )}
 
-            {/* Waiting state */}
             {state === "connecting" && roomId && (
               <div className="space-y-4 text-center animate-fade-in">
                 <div className="flex items-center justify-center gap-2">
@@ -436,9 +457,8 @@ export default function Home() {
                   <span className="text-sm text-muted">Waiting for someone to join...</span>
                 </div>
                 <div className="bg-white/50 rounded-2xl p-4">
-                  <div className="flex items-center justify-center gap-3">
-                    <span className="font-mono text-3xl tracking-[0.35em] text-foreground font-bold">{displayCode}</span>
-                  </div>
+                  <span className="font-mono text-3xl tracking-[0.35em] text-foreground font-bold">{displayCode}</span>
+                  <br />
                   <button
                     onClick={copyCode}
                     className="mt-3 text-sm font-medium px-4 py-1.5 rounded-lg transition-all text-white"
@@ -462,7 +482,6 @@ export default function Home() {
             )}
           </div>
 
-          {/* Footer */}
           <p className="text-center text-xs text-muted/60">
             No sign-up required &middot; P2P connection &middot; Nothing stored
           </p>
@@ -478,7 +497,6 @@ export default function Home() {
       <div
         className={`${chatOpen ? "w-80 min-w-80" : "w-0 min-w-0 overflow-hidden"} glass-strong border-r border-border-strong flex flex-col transition-all duration-300`}
       >
-        {/* Chat header */}
         <div className="px-4 py-3 border-b border-border flex items-center justify-between">
           <div className="flex items-center gap-2">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-lily-deep">
@@ -495,7 +513,6 @@ export default function Home() {
           <span className="text-[10px] text-muted font-medium">clears on hang up</span>
         </div>
 
-        {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
           {messages.length === 0 && (
             <div className="text-center mt-12 space-y-2">
@@ -532,7 +549,6 @@ export default function Home() {
           <div ref={chatEndRef} />
         </div>
 
-        {/* Chat input */}
         <div className="p-3 border-t border-border">
           <div className="flex gap-2">
             <input
@@ -561,7 +577,6 @@ export default function Home() {
 
       {/* Video area */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Top bar */}
         <div className="glass-strong flex items-center justify-between px-5 py-3 border-b border-border">
           <div className="flex items-center gap-3">
             <button
@@ -587,9 +602,7 @@ export default function Home() {
           <span className="text-sm font-mono text-muted font-medium">{formatDuration(callDuration)}</span>
         </div>
 
-        {/* Videos */}
         <div className="flex-1 flex items-center justify-center p-4 relative" style={{ background: "linear-gradient(135deg, #fce4ec40, #f3e5f540, #e8eaf640)" }}>
-          {/* Remote video */}
           <video
             ref={remoteVideoRef}
             autoPlay
@@ -597,7 +610,6 @@ export default function Home() {
             className="w-full h-full max-h-[calc(100vh-140px)] object-cover rounded-2xl shadow-xl"
             style={{ background: "linear-gradient(135deg, #f3e5f5, #e8eaf6)" }}
           />
-          {/* Local video PiP */}
           <video
             ref={localVideoRef}
             autoPlay
@@ -607,14 +619,11 @@ export default function Home() {
           />
         </div>
 
-        {/* Controls */}
         <div className="glass-strong flex items-center justify-center gap-3 py-4 border-t border-border">
           <button
             onClick={toggleMic}
             className={`w-12 h-12 rounded-full flex items-center justify-center transition-all shadow-md active:scale-95 ${
-              micOn
-                ? "bg-white hover:bg-white/80 text-foreground"
-                : "bg-red-100 text-red-500 hover:bg-red-200"
+              micOn ? "bg-white hover:bg-white/80 text-foreground" : "bg-red-100 text-red-500 hover:bg-red-200"
             }`}
             title={micOn ? "Mute" : "Unmute"}
           >
@@ -622,16 +631,14 @@ export default function Home() {
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
                 <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                <line x1="12" y1="19" x2="12" y2="23" />
-                <line x1="8" y1="23" x2="16" y2="23" />
+                <line x1="12" y1="19" x2="12" y2="23" /><line x1="8" y1="23" x2="16" y2="23" />
               </svg>
             ) : (
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="1" y1="1" x2="23" y2="23" />
                 <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6" />
                 <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2c0 .76-.13 1.5-.36 2.18" />
-                <line x1="12" y1="19" x2="12" y2="23" />
-                <line x1="8" y1="23" x2="16" y2="23" />
+                <line x1="12" y1="19" x2="12" y2="23" /><line x1="8" y1="23" x2="16" y2="23" />
               </svg>
             )}
           </button>
@@ -639,22 +646,18 @@ export default function Home() {
           <button
             onClick={toggleCam}
             className={`w-12 h-12 rounded-full flex items-center justify-center transition-all shadow-md active:scale-95 ${
-              camOn
-                ? "bg-white hover:bg-white/80 text-foreground"
-                : "bg-red-100 text-red-500 hover:bg-red-200"
+              camOn ? "bg-white hover:bg-white/80 text-foreground" : "bg-red-100 text-red-500 hover:bg-red-200"
             }`}
-            title={camOn ? "Turn off camera" : "Turn on camera"}
+            title={camOn ? "Camera off" : "Camera on"}
           >
             {camOn ? (
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polygon points="23 7 16 12 23 17 23 7" />
-                <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+                <polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
               </svg>
             ) : (
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="1" y1="1" x2="23" y2="23" />
-                <path d="M21 17V7l-7 5 7 5z" />
-                <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+                <path d="M21 17V7l-7 5 7 5z" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
               </svg>
             )}
           </button>
