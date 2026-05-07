@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "rp — instant video calls",
-  description: "Peer-to-peer video calls with live chat. No sign-up required.",
+  title: "rp — secure video calls",
+  description: "Encrypted peer-to-peer video calls with live chat. No sign-up required.",
 };
 
 export default function RootLayout({
@@ -27,7 +27,7 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full w-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-[#0a0a0a] text-white">{children}</body>
+      <body className="min-h-full w-full flex flex-col">{children}</body>
     </html>
   );
 }
