@@ -280,163 +280,162 @@ export default function Home() {
     );
   }
 
-  // ======================== CALL (Google Meet layout, pastel theme) ========================
+  // ======================== CALL — side-by-side layout ========================
   return (
-    <div style={{ height: "100vh", width: "100vw", display: "flex", flexDirection: "column", background: "linear-gradient(180deg, #fdf2f8, #ede9fe, #e0f2fe)", overflow: "hidden", position: "relative" }}>
+    <div style={{ height: "100vh", width: "100vw", display: "flex", flexDirection: "column", background: "linear-gradient(180deg, #fdf2f8, #ede9fe, #e0f2fe)", overflow: "hidden" }}>
 
-      {/* Main video area */}
-      <div style={{ flex: 1, position: "relative", display: "flex", alignItems: "center", justifyContent: "center", padding: 12 }}>
-        {/* Remote video */}
-        <video ref={rv} autoPlay playsInline
-          style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 16, background: "#f5e6f0", boxShadow: "0 8px 40px rgba(244,114,182,0.12)" }} />
+      {/* Top bar — duration, room code, E2E badge */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "8px 20px", background: "rgba(255,255,255,0.45)", backdropFilter: "blur(16px)", borderBottom: "1px solid rgba(244,114,182,0.08)", gap: 12, flexShrink: 0 }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: "#6d4c7d", fontFamily: "var(--font-mono)" }}>{fmtD(dur)}</span>
+        <span style={{ fontSize: 12, color: "rgba(176,122,176,0.3)" }}>|</span>
+        <span style={{ fontSize: 13, color: "#b07ab0" }}>{dc || "rp"}</span>
+        {e2e && <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 10, background: "rgba(34,197,94,0.1)", color: "#16a34a" }}>E2E Encrypted</span>}
+        {peer2 && <>
+          <span style={{ fontSize: 12, color: "rgba(176,122,176,0.3)" }}>|</span>
+          <span style={{ fontSize: 13, color: "#6d4c7d" }}>{peer2}</span>
+        </>}
+      </div>
 
-        {/* Remote name badge */}
-        {peer2 && (
-          <div style={{ position: "absolute", bottom: 90, left: 24, display: "flex", alignItems: "center", gap: 8, padding: "8px 16px", borderRadius: 12, background: "rgba(255,255,255,0.7)", backdropFilter: "blur(12px)", border: "1px solid rgba(244,114,182,0.15)", animation: "fade-up 0.3s ease-out" }}>
-            <span style={{ fontSize: 14, fontWeight: 500, color: "#6d4c7d" }}>{peer2}</span>
+      {/* Main content — video + chat side by side */}
+      <div style={{ flex: 1, display: "flex", overflow: "hidden", minHeight: 0 }}>
+
+        {/* Video area */}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", position: "relative", minWidth: 0 }}>
+
+          {/* Videos container — remote large, local small */}
+          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 12, position: "relative", minHeight: 0 }}>
+            {/* Remote video — contain preserves phone/laptop aspect ratio */}
+            <video ref={rv} autoPlay playsInline
+              style={{ maxWidth: "100%", maxHeight: "100%", width: "100%", height: "100%", objectFit: "contain", borderRadius: 16, background: "rgba(109,76,125,0.08)" }} />
+
+            {/* Draggable PiP — local camera */}
+            <div style={{ position: "absolute", left: pipPos.x === -1 ? undefined : pipPos.x, top: pipPos.y === -1 ? undefined : pipPos.y, right: pipPos.x === -1 ? 20 : undefined, bottom: pipPos.y === -1 ? 16 : undefined, zIndex: 30, borderRadius: 14, overflow: "hidden", boxShadow: "0 4px 20px rgba(196,181,253,0.3)", border: "2px solid rgba(244,114,182,0.25)", cursor: "grab", userSelect: "none", touchAction: "none", width: 180, transition: dragging.current ? "none" : "box-shadow 0.3s" }}
+              onMouseDown={pipDown} onTouchStart={pipDown}
+              onMouseOver={e => (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 20px rgba(196,181,253,0.3), 0 0 0 2px rgba(236,72,153,0.4)"}
+              onMouseOut={e => (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 20px rgba(196,181,253,0.3)"}>
+              <video ref={lv} autoPlay playsInline muted
+                style={{ width: 180, height: 135, objectFit: "cover", display: "block", background: "rgba(109,76,125,0.08)" }} />
+              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "4px 10px", background: "linear-gradient(transparent, rgba(107,70,120,0.6))", fontSize: 11, fontWeight: 500, color: "#fff" }}>
+                {name || "You"} {!mic && " (muted)"}
+              </div>
+              {!mic && (
+                <div style={{ position: "absolute", top: 6, right: 6, width: 24, height: 24, borderRadius: "50%", background: "rgba(239,68,68,0.85)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><line x1="1" y1="1" x2="23" y2="23" /><path d="M9 9v3a3 3 0 0 0 5.12 2.12" /></svg>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Bottom controls bar */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "10px 16px", gap: 8, background: "rgba(255,255,255,0.5)", backdropFilter: "blur(20px)", borderTop: "1px solid rgba(244,114,182,0.08)", flexShrink: 0 }}>
+            {/* Mic */}
+            <button onClick={togMic} title={mic ? "Mute" : "Unmute"}
+              style={{ width: 44, height: 44, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", transition: "all 0.15s", background: mic ? "rgba(255,255,255,0.7)" : "#ef4444", color: mic ? "#6d4c7d" : "#fff", boxShadow: mic ? "0 2px 10px rgba(244,114,182,0.1)" : "0 2px 10px rgba(239,68,68,0.3)", border: mic ? "1px solid rgba(244,114,182,0.15)" : "none" }}
+              onMouseOver={e => { if (mic) (e.currentTarget).style.background = "rgba(255,255,255,0.9)"; }}
+              onMouseOut={e => { if (mic) (e.currentTarget).style.background = "rgba(255,255,255,0.7)"; }}>
+              {mic ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6d4c7d" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" /><path d="M19 10v2a7 7 0 0 1-14 0v-2" /><line x1="12" y1="19" x2="12" y2="23" /><line x1="8" y1="23" x2="16" y2="23" /></svg>
+                : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="1" y1="1" x2="23" y2="23" /><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6" /><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2c0 .76-.13 1.5-.36 2.18" /><line x1="12" y1="19" x2="12" y2="23" /><line x1="8" y1="23" x2="16" y2="23" /></svg>}
+            </button>
+
+            {/* Camera */}
+            <button onClick={togCam} title={cam ? "Camera off" : "Camera on"}
+              style={{ width: 44, height: 44, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", transition: "all 0.15s", background: cam ? "rgba(255,255,255,0.7)" : "#ef4444", color: cam ? "#6d4c7d" : "#fff", boxShadow: cam ? "0 2px 10px rgba(244,114,182,0.1)" : "0 2px 10px rgba(239,68,68,0.3)", border: cam ? "1px solid rgba(244,114,182,0.15)" : "none" }}
+              onMouseOver={e => { if (cam) (e.currentTarget).style.background = "rgba(255,255,255,0.9)"; }}
+              onMouseOut={e => { if (cam) (e.currentTarget).style.background = "rgba(255,255,255,0.7)"; }}>
+              {cam ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6d4c7d" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" /></svg>
+                : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="1" y1="1" x2="23" y2="23" /><path d="M21 17V7l-7 5 7 5z" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" /></svg>}
+            </button>
+
+            {/* Screen share */}
+            <button onClick={togScreen} title="Screen share"
+              style={{ width: 44, height: 44, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", transition: "all 0.15s", background: sharing ? "linear-gradient(135deg, #60a5fa, #93c5fd)" : "rgba(255,255,255,0.7)", color: sharing ? "#fff" : "#6d4c7d", boxShadow: sharing ? "0 2px 10px rgba(96,165,250,0.3)" : "0 2px 10px rgba(244,114,182,0.1)", border: sharing ? "none" : "1px solid rgba(244,114,182,0.15)" }}
+              onMouseOver={e => { if (!sharing) (e.currentTarget).style.background = "rgba(255,255,255,0.9)"; }}
+              onMouseOut={e => { if (!sharing) (e.currentTarget).style.background = "rgba(255,255,255,0.7)"; }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" /></svg>
+            </button>
+
+            {/* End call */}
+            <button onClick={cleanup} title="Leave call"
+              style={{ width: 52, height: 44, borderRadius: 22, border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", background: "#ef4444", color: "#fff", transition: "all 0.15s", marginLeft: 4, boxShadow: "0 3px 12px rgba(239,68,68,0.3)" }}
+              onMouseOver={e => (e.currentTarget).style.background = "#dc2626"}
+              onMouseOut={e => (e.currentTarget).style.background = "#ef4444"}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91" /><line x1="23" y1="1" x2="1" y2="23" /></svg>
+            </button>
+
+            {/* Chat toggle */}
+            <button onClick={() => chat ? setChat(false) : openChat()} title="Chat"
+              style={{ width: 44, height: 44, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", background: chat ? "rgba(236,72,153,0.12)" : "rgba(255,255,255,0.7)", color: chat ? "#ec4899" : "#6d4c7d", transition: "all 0.15s", position: "relative", boxShadow: "0 2px 10px rgba(244,114,182,0.1)", border: "1px solid rgba(244,114,182,0.15)", marginLeft: 4 }}
+              onMouseOver={e => { if (!chat) (e.currentTarget).style.background = "rgba(255,255,255,0.9)"; }}
+              onMouseOut={e => { if (!chat) (e.currentTarget).style.background = chat ? "rgba(236,72,153,0.12)" : "rgba(255,255,255,0.7)"; }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+              {unread > 0 && <div style={{ position: "absolute", top: -4, right: -4, minWidth: 18, height: 18, borderRadius: 9, background: "#ec4899", fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", padding: "0 4px", animation: "scale-up 0.3s ease-out" }}>{unread}</div>}
+            </button>
+          </div>
+        </div>
+
+        {/* Chat panel — inline beside video, not overlapping */}
+        {chat && (
+          <div style={{ width: 340, flexShrink: 0, background: "rgba(255,255,255,0.65)", backdropFilter: "blur(24px)", borderLeft: "1px solid rgba(244,114,182,0.1)", display: "flex", flexDirection: "column", animation: "fade-up 0.25s ease-out" }}>
+            {/* Chat header */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", borderBottom: "1px solid rgba(244,114,182,0.08)", flexShrink: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ec4899" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+                <span style={{ fontSize: 14, fontWeight: 600, color: "#6d4c7d" }}>Chat</span>
+                {e2e && <span style={{ fontSize: 9, fontWeight: 600, padding: "1px 6px", borderRadius: 8, background: "rgba(34,197,94,0.1)", color: "#16a34a" }}>E2E</span>}
+              </div>
+              <button onClick={() => setChat(false)} style={{ width: 28, height: 28, borderRadius: "50%", border: "none", background: "transparent", color: "#b07ab0", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, transition: "background 0.15s" }}
+                onMouseOver={e => (e.currentTarget).style.background = "rgba(244,114,182,0.08)"}
+                onMouseOut={e => (e.currentTarget).style.background = "transparent"}>✕</button>
+            </div>
+
+            {/* Chat notice */}
+            <div style={{ padding: "8px 16px", fontSize: 11, color: "#b07ab0", borderBottom: "1px solid rgba(244,114,182,0.05)", flexShrink: 0 }}>
+              Messages deleted when the call ends
+            </div>
+
+            {/* Messages */}
+            <div style={{ flex: 1, overflowY: "auto", padding: "12px 14px", minHeight: 0 }}>
+              {msgs.length === 0 && (
+                <div style={{ textAlign: "center", marginTop: 40, color: "#c4a0c4", fontSize: 13 }}>No messages yet</div>
+              )}
+              {msgs.map(m => (
+                <div key={m.id} style={{ marginBottom: 14, animation: "msg-in 0.25s ease-out" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: m.from === "You" ? "#ec4899" : "#6d4c7d" }}>{m.from === "You" ? "You" : peer2 || "Them"}</span>
+                    <span style={{ fontSize: 10, color: "#c4a0c4" }}>{m.time}</span>
+                  </div>
+                  <p style={{ fontSize: 13, color: "#4a2040", margin: 0, lineHeight: 1.45, padding: "6px 10px", borderRadius: 12, background: m.from === "You" ? "rgba(236,72,153,0.06)" : "rgba(167,139,250,0.06)" }}>{m.text}</p>
+                </div>
+              ))}
+              {typing && (
+                <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "6px 0", animation: "fade-up 0.2s ease-out" }}>
+                  <span style={{ fontSize: 11, color: "#b07ab0" }}>{peer2 || "Them"} is typing</span>
+                  <div style={{ display: "flex", gap: 3 }}>
+                    {[0,1,2].map(i => <div key={i} style={{ width: 4, height: 4, borderRadius: "50%", background: "#d8b4fe", animation: `typing-bounce 1.2s ease-in-out infinite ${i * 0.15}s` }} />)}
+                  </div>
+                </div>
+              )}
+              <div ref={ce} />
+            </div>
+
+            {/* Chat input */}
+            <div style={{ padding: "10px 12px", borderTop: "1px solid rgba(244,114,182,0.08)", flexShrink: 0 }}>
+              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <input type="text" value={draft} onChange={e => { setDraft(e.target.value); sendTyp(); }}
+                  onKeyDown={e => e.key === "Enter" && sendMsg()}
+                  placeholder="Type a message..." maxLength={500}
+                  style={{ flex: 1, padding: "10px 14px", borderRadius: 20, border: "1px solid rgba(244,114,182,0.12)", background: "rgba(255,255,255,0.6)", color: "#4a2040", fontSize: 13, transition: "border-color 0.2s" }}
+                  onFocus={e => e.target.style.borderColor = "rgba(236,72,153,0.4)"}
+                  onBlur={e => e.target.style.borderColor = "rgba(244,114,182,0.12)"} />
+                <button onClick={sendMsg} disabled={!draft.trim()}
+                  style={{ width: 36, height: 36, borderRadius: "50%", border: "none", background: draft.trim() ? "linear-gradient(135deg, #ec4899, #a78bfa)" : "rgba(244,114,182,0.1)", color: draft.trim() ? "#fff" : "#d8b4fe", cursor: draft.trim() ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.15s", flexShrink: 0 }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>
+                </button>
+              </div>
+            </div>
           </div>
         )}
-
-        {/* Draggable PiP */}
-        <div style={{ position: "absolute", left: pipPos.x === -1 ? undefined : pipPos.x, top: pipPos.y === -1 ? undefined : pipPos.y, right: pipPos.x === -1 ? 20 : undefined, bottom: pipPos.y === -1 ? 90 : undefined, zIndex: 30, borderRadius: 16, overflow: "hidden", boxShadow: "0 4px 24px rgba(196,181,253,0.3)", border: "2px solid rgba(244,114,182,0.25)", cursor: "grab", userSelect: "none", touchAction: "none", width: 200, transition: dragging.current ? "none" : "box-shadow 0.3s" }}
-          onMouseDown={pipDown} onTouchStart={pipDown}
-          onMouseOver={e => (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 24px rgba(196,181,253,0.3), 0 0 0 2px rgba(236,72,153,0.4)"}
-          onMouseOut={e => (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 24px rgba(196,181,253,0.3)"}>
-          <video ref={lv} autoPlay playsInline muted
-            style={{ width: 200, height: 150, objectFit: "cover", display: "block", background: "#f5e6f0" }} />
-          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "4px 10px", background: "linear-gradient(transparent, rgba(107,70,120,0.6))", fontSize: 12, fontWeight: 500, color: "#fff" }}>
-            {name || "You"}
-          </div>
-          {!mic && (
-            <div style={{ position: "absolute", top: 8, right: 8, width: 28, height: 28, borderRadius: "50%", background: "rgba(239,68,68,0.85)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><line x1="1" y1="1" x2="23" y2="23" /><path d="M9 9v3a3 3 0 0 0 5.12 2.12" /></svg>
-            </div>
-          )}
-        </div>
-
-        {/* Call duration */}
-        <div style={{ position: "absolute", top: 16, left: "50%", transform: "translateX(-50%)", padding: "6px 16px", borderRadius: 20, background: "rgba(255,255,255,0.7)", backdropFilter: "blur(12px)", border: "1px solid rgba(244,114,182,0.12)", fontSize: 13, fontWeight: 500, color: "#6d4c7d", fontFamily: "var(--font-mono)" }}>
-          {fmtD(dur)}
-          {e2e && <span style={{ marginLeft: 8, color: "#22c55e" }}>🔒</span>}
-        </div>
       </div>
-
-      {/* Bottom controls bar */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "12px 20px", gap: 8, background: "rgba(255,255,255,0.5)", backdropFilter: "blur(20px)", borderTop: "1px solid rgba(244,114,182,0.1)", position: "relative", zIndex: 20 }}>
-        {/* Left: meeting info */}
-        <div style={{ position: "absolute", left: 20, display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 12, color: "#b07ab0", fontFamily: "var(--font-mono)" }}>{fmtD(dur)}</span>
-          <span style={{ fontSize: 12, color: "rgba(176,122,176,0.4)" }}>|</span>
-          <span style={{ fontSize: 12, color: "#b07ab0" }}>{dc || "rp"}</span>
-        </div>
-
-        {/* Mic */}
-        <button onClick={togMic} title={mic ? "Mute" : "Unmute"}
-          style={{ width: 48, height: 48, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", transition: "all 0.15s", background: mic ? "rgba(255,255,255,0.7)" : "#ef4444", color: mic ? "#6d4c7d" : "#fff", boxShadow: mic ? "0 2px 12px rgba(244,114,182,0.1)" : "0 2px 12px rgba(239,68,68,0.3)", border: mic ? "1px solid rgba(244,114,182,0.15)" : "none" }}
-          onMouseOver={e => { if (mic) (e.currentTarget).style.background = "rgba(255,255,255,0.9)"; }}
-          onMouseOut={e => { if (mic) (e.currentTarget).style.background = "rgba(255,255,255,0.7)"; }}>
-          {mic ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6d4c7d" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" /><path d="M19 10v2a7 7 0 0 1-14 0v-2" /><line x1="12" y1="19" x2="12" y2="23" /><line x1="8" y1="23" x2="16" y2="23" /></svg>
-            : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="1" y1="1" x2="23" y2="23" /><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6" /><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2c0 .76-.13 1.5-.36 2.18" /><line x1="12" y1="19" x2="12" y2="23" /><line x1="8" y1="23" x2="16" y2="23" /></svg>}
-        </button>
-
-        {/* Camera */}
-        <button onClick={togCam} title={cam ? "Camera off" : "Camera on"}
-          style={{ width: 48, height: 48, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", transition: "all 0.15s", background: cam ? "rgba(255,255,255,0.7)" : "#ef4444", color: cam ? "#6d4c7d" : "#fff", boxShadow: cam ? "0 2px 12px rgba(244,114,182,0.1)" : "0 2px 12px rgba(239,68,68,0.3)", border: cam ? "1px solid rgba(244,114,182,0.15)" : "none" }}
-          onMouseOver={e => { if (cam) (e.currentTarget).style.background = "rgba(255,255,255,0.9)"; }}
-          onMouseOut={e => { if (cam) (e.currentTarget).style.background = "rgba(255,255,255,0.7)"; }}>
-          {cam ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6d4c7d" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" /></svg>
-            : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="1" y1="1" x2="23" y2="23" /><path d="M21 17V7l-7 5 7 5z" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" /></svg>}
-        </button>
-
-        {/* Screen share */}
-        <button onClick={togScreen} title="Screen share"
-          style={{ width: 48, height: 48, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", transition: "all 0.15s", background: sharing ? "linear-gradient(135deg, #60a5fa, #93c5fd)" : "rgba(255,255,255,0.7)", color: sharing ? "#fff" : "#6d4c7d", boxShadow: sharing ? "0 2px 12px rgba(96,165,250,0.3)" : "0 2px 12px rgba(244,114,182,0.1)", border: sharing ? "none" : "1px solid rgba(244,114,182,0.15)" }}
-          onMouseOver={e => { if (!sharing) (e.currentTarget).style.background = "rgba(255,255,255,0.9)"; }}
-          onMouseOut={e => { if (!sharing) (e.currentTarget).style.background = "rgba(255,255,255,0.7)"; }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" /></svg>
-        </button>
-
-        {/* End call */}
-        <button onClick={cleanup} title="Leave call"
-          style={{ width: 56, height: 48, borderRadius: 24, border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", background: "#ef4444", color: "#fff", transition: "all 0.15s", marginLeft: 4, boxShadow: "0 4px 16px rgba(239,68,68,0.3)" }}
-          onMouseOver={e => (e.currentTarget).style.background = "#dc2626"}
-          onMouseOut={e => (e.currentTarget).style.background = "#ef4444"}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91" /><line x1="23" y1="1" x2="1" y2="23" /></svg>
-        </button>
-
-        {/* Right side: chat toggle */}
-        <div style={{ position: "absolute", right: 20, display: "flex", alignItems: "center", gap: 8 }}>
-          <button onClick={() => chat ? setChat(false) : openChat()} title="Chat"
-            style={{ width: 48, height: 48, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", background: chat ? "rgba(236,72,153,0.12)" : "rgba(255,255,255,0.7)", color: chat ? "#ec4899" : "#6d4c7d", transition: "all 0.15s", position: "relative", boxShadow: "0 2px 12px rgba(244,114,182,0.1)", border: "1px solid rgba(244,114,182,0.15)" }}
-            onMouseOver={e => { if (!chat) (e.currentTarget).style.background = "rgba(255,255,255,0.9)"; }}
-            onMouseOut={e => { if (!chat) (e.currentTarget).style.background = "rgba(255,255,255,0.7)"; }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
-            {unread > 0 && <div style={{ position: "absolute", top: -2, right: -2, width: 20, height: 20, borderRadius: "50%", background: "#ec4899", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", animation: "scale-up 0.3s ease-out" }}>{unread}</div>}
-          </button>
-        </div>
-      </div>
-
-      {/* Chat panel — slides from right */}
-      {chat && (
-        <div style={{ position: "absolute", right: 0, top: 0, bottom: 68, width: "min(380px, 100vw)", background: "rgba(255,255,255,0.75)", backdropFilter: "blur(24px)", borderLeft: "1px solid rgba(244,114,182,0.12)", display: "flex", flexDirection: "column", zIndex: 40, animation: "fade-up 0.25s ease-out", borderRadius: "0 0 0 16px" }}>
-          {/* Chat header */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: "1px solid rgba(244,114,182,0.1)" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 16, fontWeight: 600, color: "#6d4c7d" }}>In-call messages</span>
-              {e2e && <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 10, background: "rgba(34,197,94,0.1)", color: "#16a34a" }}>E2E</span>}
-            </div>
-            <button onClick={() => setChat(false)} style={{ width: 32, height: 32, borderRadius: "50%", border: "none", background: "transparent", color: "#b07ab0", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, transition: "background 0.15s" }}
-              onMouseOver={e => (e.currentTarget).style.background = "rgba(244,114,182,0.08)"}
-              onMouseOut={e => (e.currentTarget).style.background = "transparent"}>✕</button>
-          </div>
-
-          {/* Chat notice */}
-          <div style={{ padding: "12px 20px", fontSize: 12, color: "#b07ab0", borderBottom: "1px solid rgba(244,114,182,0.06)" }}>
-            Messages are only visible to people in the call and are deleted when the call ends.
-          </div>
-
-          {/* Messages */}
-          <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
-            {msgs.length === 0 && (
-              <div style={{ textAlign: "center", marginTop: 40, color: "#c4a0c4", fontSize: 13 }}>No messages yet</div>
-            )}
-            {msgs.map(m => (
-              <div key={m.id} style={{ marginBottom: 16, animation: "msg-in 0.25s ease-out" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: m.from === "You" ? "#ec4899" : "#6d4c7d" }}>{m.from === "You" ? "You" : peer2 || "Them"}</span>
-                  <span style={{ fontSize: 11, color: "#c4a0c4" }}>{m.time}</span>
-                </div>
-                <p style={{ fontSize: 14, color: "#4a2040", margin: 0, lineHeight: 1.5 }}>{m.text}</p>
-              </div>
-            ))}
-            {typing && (
-              <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "8px 0", animation: "fade-up 0.2s ease-out" }}>
-                <span style={{ fontSize: 12, color: "#b07ab0" }}>{peer2 || "Them"} is typing</span>
-                <div style={{ display: "flex", gap: 3 }}>
-                  {[0,1,2].map(i => <div key={i} style={{ width: 5, height: 5, borderRadius: "50%", background: "#d8b4fe", animation: `typing-bounce 1.2s ease-in-out infinite ${i * 0.15}s` }} />)}
-                </div>
-              </div>
-            )}
-            <div ref={ce} />
-          </div>
-
-          {/* Chat input */}
-          <div style={{ padding: "12px 16px", borderTop: "1px solid rgba(244,114,182,0.1)" }}>
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <input type="text" value={draft} onChange={e => { setDraft(e.target.value); sendTyp(); }}
-                onKeyDown={e => e.key === "Enter" && sendMsg()}
-                placeholder="Send a message" maxLength={500}
-                style={{ flex: 1, padding: "12px 16px", borderRadius: 24, border: "1px solid rgba(244,114,182,0.15)", background: "rgba(255,255,255,0.6)", color: "#4a2040", fontSize: 14, transition: "border-color 0.2s" }}
-                onFocus={e => e.target.style.borderColor = "rgba(236,72,153,0.4)"}
-                onBlur={e => e.target.style.borderColor = "rgba(244,114,182,0.15)"} />
-              <button onClick={sendMsg} disabled={!draft.trim()}
-                style={{ width: 40, height: 40, borderRadius: "50%", border: "none", background: draft.trim() ? "linear-gradient(135deg, #ec4899, #a78bfa)" : "rgba(244,114,182,0.1)", color: draft.trim() ? "#fff" : "#d8b4fe", cursor: draft.trim() ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.15s" }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
