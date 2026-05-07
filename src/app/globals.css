@@ -10,16 +10,16 @@ html, body { height: 100%; margin: 0; }
 body {
   font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
   overflow-x: hidden;
-  background: #1a0e14;
-  color: #fff;
+  background: #fdf2f8;
+  color: #4a2040;
 }
 
-* { scrollbar-width: thin; scrollbar-color: #5a3050 transparent; box-sizing: border-box; }
+* { scrollbar-width: thin; scrollbar-color: #f0a0c8 transparent; box-sizing: border-box; }
 *::-webkit-scrollbar { width: 5px; }
 *::-webkit-scrollbar-track { background: transparent; }
-*::-webkit-scrollbar-thumb { background: #5a3050; border-radius: 10px; }
+*::-webkit-scrollbar-thumb { background: #f0a0c8; border-radius: 10px; }
 input:focus, textarea:focus { outline: none; }
-video { background: #000; }
+video { background: #f5e6f0; }
 
 @keyframes fade-up { from { opacity:0; transform:translateY(20px) } to { opacity:1; transform:translateY(0) } }
 @keyframes scale-up { from { opacity:0; transform:scale(0.95) } to { opacity:1; transform:scale(1) } }
